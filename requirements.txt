@@ -9,3 +9,4 @@ tqdm>=4.66,<5
 pytesseract>=0.3.13,<1
 pillow>=10,<13
 pandas>=2.2,<3
+bitsandbytes>=0.45,<1
