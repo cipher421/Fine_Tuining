@@ -4,8 +4,9 @@ import json
 import pdfplumber
 
 
-PDF_DIR = Path("data/pdfs")
-OUTPUT_DIR = Path("data/raw")
+BASE_DIR = Path(__file__).resolve().parent
+PDF_DIR = BASE_DIR / "data" / "pdfs"
+OUTPUT_DIR = BASE_DIR / "data" / "raw"
 
 
 def extract_pdf(pdf_path: Path) -> dict:

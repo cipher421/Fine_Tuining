@@ -3,8 +3,9 @@ import json
 import re
 
 
-INPUT_DIR = Path("data/clean")
-OUTPUT_FILE = Path("data/processed/training.jsonl")
+BASE_DIR = Path(__file__).resolve().parent
+INPUT_DIR = BASE_DIR / "data" / "clean"
+OUTPUT_FILE = BASE_DIR / "data" / "processed" / "training.jsonl"
 
 
 MIN_WORDS = 20
@@ -105,6 +106,12 @@ def main():
                     )
 
                     total_examples += 1
+
+    if total_examples == 0:
+        raise ValueError(
+            f"No training examples were created from {INPUT_DIR}. "
+            f"Each paragraph must contain at least {MIN_WORDS} words."
+        )
 
     print(
         f"Created {total_examples:,} training examples"

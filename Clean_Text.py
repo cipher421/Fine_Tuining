@@ -3,8 +3,9 @@ import json
 import re
 
 
-INPUT_DIR = Path("data/raw")
-OUTPUT_DIR = Path("data/clean")
+BASE_DIR = Path(__file__).resolve().parent
+INPUT_DIR = BASE_DIR / "data" / "raw"
+OUTPUT_DIR = BASE_DIR / "data" / "clean"
 
 
 def clean_text(text: str) -> str:

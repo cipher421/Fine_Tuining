@@ -1,18 +1,30 @@
+import os
 from pathlib import Path
+
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
 
+BASE_DIR = Path(__file__).resolve().parent
 MODEL_NAME = "Qwen/Qwen3-0.6B"
 
-INPUT_FILE = "data/processed/training.jsonl"
-OUTPUT_DIR = "data/tokenized"
+INPUT_FILE = BASE_DIR / "data" / "processed" / "training.jsonl"
+OUTPUT_DIR = BASE_DIR / "data" / "tokenized"
 
-MAX_LENGTH = 2048
+MAX_LENGTH = 512
 
 
 def main():
+    if not INPUT_FILE.exists():
+        raise FileNotFoundError(f"Training dataset not found: {INPUT_FILE}")
+    if INPUT_FILE.stat().st_size == 0:
+        raise ValueError(
+            f"Training dataset is empty: {INPUT_FILE}. "
+            "Run Training_Dataset.py and check that source paragraphs meet the minimum length."
+        )
+
     print("Loading tokenizer...")
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -27,9 +39,12 @@ def main():
 
     dataset = load_dataset(
         "json",
-        data_files=INPUT_FILE,
+        data_files=str(INPUT_FILE),
         split="train",
     )
+
+    if len(dataset) == 0:
+        raise ValueError(f"Training dataset contains no examples: {INPUT_FILE}")
 
     print(f"Training examples: {len(dataset):,}")
 
