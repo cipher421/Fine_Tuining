@@ -53,7 +53,7 @@ def main():
     )
     model = FastLanguageModel.get_peft_model(
         model,
-        r=16,
+        r=8,
         target_modules=[
             "q_proj",
             "k_proj",

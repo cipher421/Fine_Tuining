@@ -1,0 +1,70 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Local environment and editor settings
+.env
+.env.*
+.vscode/
+.idea/
+.DS_Store
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+.wheel/
+
+# Test and coverage outputs
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Logs and runtime data
+*.log
+logs/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Model and dataset outputs
+models/
+data/raw/
+data/clean/
+data/processed/
+data/tokenized/
+# Keep the project dataset folders if you want to track a few source files manually.
+# If you prefer to keep everything local, remove the next line.
+!data/pdfs/
+
+# Hugging Face cache
+.cache/
+~/.cache/
+
+# Large local artifacts
+*.arrow
+*.parquet
+*.bin
+*.safetensors
+
+# OS-generated files
+Thumbs.db
+
+# Local dependency lock files if not meant for repo
+# requirements-gpu.txt
