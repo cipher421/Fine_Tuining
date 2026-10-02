@@ -11,7 +11,7 @@ This project prepares educational content, converts it into a chat-style instruc
 The project is configured to use:
 
 ```text
-meta-llama/Llama-3.2-3B-Instruct
+unsloth/Llama-3.2-3B-Instruct
 ```
 
 The shared settings for this model live in [training_common.py](training_common.py), and the tokenizer uses the same model ID in [Tokenize.py](Tokenize.py).

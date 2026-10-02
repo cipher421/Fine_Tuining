@@ -8,7 +8,7 @@ from transformers import AutoTokenizer
 
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
+MODEL_NAME = "unsloth/Llama-3.2-3B-Instruct"
 
 INPUT_FILE = BASE_DIR / "data" / "processed" / "training.jsonl"
 OUTPUT_DIR = BASE_DIR / "data" / "tokenized"

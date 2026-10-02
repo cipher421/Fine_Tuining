@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, TrainingArguments
 
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
+MODEL_NAME = "unsloth/Llama-3.2-3B-Instruct"
 
 DATASET_DIR = BASE_DIR / "data" / "tokenized"
 CPU_ADAPTER_DIR = BASE_DIR / "models" / "llama-3.2-3b-instruct-lora"
