@@ -4,13 +4,11 @@ import os
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import torch
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 from trl import SFTTrainer
 
 from training_common import (
     MODEL_NAME,
     QLORA_ADAPTER_DIR,
-    create_lora_config,
     create_training_arguments,
     load_training_data,
     save_adapter,
@@ -32,25 +30,44 @@ def main():
             "python -m pip install -r requirements-gpu.txt"
         ) from exc
 
+    try:
+        from unsloth import FastLanguageModel
+    except (ImportError, RuntimeError) as exc:
+        raise RuntimeError(
+            "GPU QLoRA requires Unsloth. Install the GPU dependencies with: "
+            "python -m pip install -r requirements-gpu.txt"
+        ) from exc
+
     print(f"GPU: {torch.cuda.get_device_name(0)}")
     print(f"bitsandbytes: {bitsandbytes.__version__}")
 
     tokenizer, dataset = load_training_data()
     print(f"Training examples: {len(dataset):,}")
 
-    quantization_config = BitsAndBytesConfig(
+    print("Loading model with Unsloth in 4-bit QLoRA mode...")
+    model, _ = FastLanguageModel.from_pretrained(
+        model_name=MODEL_NAME,
+        max_seq_length=512,
+        dtype=torch.float16,
         load_in_4bit=True,
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
     )
-
-    print("Loading model in 4-bit QLoRA mode...")
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        quantization_config=quantization_config,
-        torch_dtype=torch.float16,
-        device_map={"": torch.cuda.current_device()},
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r=16,
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
+        lora_alpha=32,
+        lora_dropout=0.05,
+        bias="none",
+        use_gradient_checkpointing="unsloth",
+        random_state=3407,
     )
     model.config.use_cache = False
 
@@ -63,7 +80,6 @@ def main():
             args=training_args,
             train_dataset=dataset,
             processing_class=tokenizer,
-            peft_config=create_lora_config(),
         )
         trainer.model.print_trainable_parameters()
 

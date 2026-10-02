@@ -29,13 +29,13 @@ This project prepares educational content, converts it into a chat-style instruc
 
 ## Setup
 
-Requirements: Python 3.10 or newer and pip. A CUDA-capable NVIDIA GPU is only needed for the optional QLoRA path. The first run downloads the Qwen model from Hugging Face, so it needs internet access.
+Requirements: Python 3.10 through 3.13 and pip. Python 3.14 is not currently compatible with the Unsloth-supported `datasets` dependency range. A CUDA-capable NVIDIA GPU is only needed for the optional QLoRA path. The first run downloads the Qwen model from Hugging Face, so it needs internet access.
 
 From the project directory, create and activate a virtual environment, then install the common dependencies:
 
 ```bash
 cd /path/to/Fine_Tuining
-python3 -m venv .venv
+python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
@@ -47,7 +47,7 @@ For CPU training, no further training dependencies are needed. For GPU QLoRA, fi
 python -m pip install -r requirements-gpu.txt
 ```
 
-The base `requirements.txt` is suitable for CPU LoRA. The GPU requirements file includes those dependencies and adds `bitsandbytes` for 4-bit QLoRA.
+The base `requirements.txt` is suitable for CPU LoRA. The GPU requirements file includes those dependencies and adds Unsloth for accelerated 4-bit QLoRA. Install a CUDA-enabled PyTorch build first, as described above.
 
 ## Prepare Data And Train
 
@@ -80,14 +80,14 @@ If you open a new terminal later, reactivate the environment with `source .venv/
 
 ## Hardware notes
 
-The CPU path loads the base model in float32 and trains an unquantized LoRA adapter. It is slow and needs enough memory for the model and activations. The GPU path uses 4-bit NF4 QLoRA and requires a CUDA-enabled PyTorch installation plus working CUDA support in `bitsandbytes`. Both use a 512-token sequence cap.
+The CPU path loads the base model in float32 and trains an unquantized LoRA adapter. It is slow and needs enough memory for the model and activations. The GPU path uses Unsloth with 4-bit QLoRA and requires a CUDA-enabled PyTorch installation plus working CUDA support in `bitsandbytes`. Both use a 512-token sequence cap.
 
 ## Important notes
 
 - Do not use Ollama-style strings such as `qwen2.5:0.6b` with Hugging Face loaders; they require a valid Hugging Face repo ID.
 - Do not pass a `Path` object to `datasets.load_dataset(..., data_files=...)`; use a string path.
 - `requirements.txt` requires TRL 0.15.2 or newer for the `processing_class` trainer API.
-- `bitsandbytes` is isolated in `requirements-gpu.txt` and is not needed for CPU training.
+- `bitsandbytes` and Unsloth are used by the GPU QLoRA path; install them through `requirements-gpu.txt`.
 - Training scripts disable tokenizer parallelism and clean up model references after training.
 
 ## Outputs
