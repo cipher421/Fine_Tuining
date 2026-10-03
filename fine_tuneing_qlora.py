@@ -26,16 +26,16 @@ def main():
     except (ImportError, RuntimeError) as exc:
         raise RuntimeError(
             "QLoRA requires a working bitsandbytes installation. "
-            "Install the GPU dependencies with: "
-            "python -m pip install -r requirements-gpu.txt"
+            "Install the project dependencies with: "
+            "python -m pip install -r requirements.txt"
         ) from exc
 
     try:
         from unsloth import FastLanguageModel
     except (ImportError, RuntimeError) as exc:
         raise RuntimeError(
-            "GPU QLoRA requires Unsloth. Install the GPU dependencies with: "
-            "python -m pip install -r requirements-gpu.txt"
+            "GPU QLoRA requires Unsloth. Install the project dependencies with: "
+            "python -m pip install -r requirements.txt"
         ) from exc
 
     print(f"GPU: {torch.cuda.get_device_name(0)}")

@@ -9,12 +9,12 @@ from transformers import AutoTokenizer, TrainingArguments
 
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_NAME = "unsloth/Llama-3.2-3B-Instruct"
+MODEL_NAME = "unsloth/Qwen3-0.6B"
 
 DATASET_DIR = BASE_DIR / "data" / "tokenized"
-CPU_ADAPTER_DIR = BASE_DIR / "models" / "llama-3.2-3b-instruct-lora"
-QLORA_ADAPTER_DIR = BASE_DIR / "models" / "llama-3.2-3b-instruct-qlora"
-MERGED_DIR = BASE_DIR / "models" / "llama-3.2-3b-instruct-merged"
+CPU_ADAPTER_DIR = BASE_DIR / "models" / "qwen3-0.6b-lora"
+QLORA_ADAPTER_DIR = BASE_DIR / "models" / "qwen3-0.6b-qlora"
+MERGED_DIR = BASE_DIR / "models" / "qwen3-0.6b-merged"
 
 
 def load_training_data():

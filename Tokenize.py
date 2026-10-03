@@ -6,9 +6,9 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
+from training_common import MODEL_NAME
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_NAME = "unsloth/Llama-3.2-3B-Instruct"
 
 INPUT_FILE = BASE_DIR / "data" / "processed" / "training.jsonl"
 OUTPUT_DIR = BASE_DIR / "data" / "tokenized"
