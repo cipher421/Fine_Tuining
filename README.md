@@ -1,126 +1,218 @@
 # Fine_Tuining
 
-Fine-tuning pipeline for a local educational dataset using Qwen3 0.6B with LoRA and QLoRA adapters.
+A Linux-first, CPU-only pipeline for preparing educational text from PDFs and
+fine-tuning a causal language model with LoRA.
 
-## Overview
+> **Model compatibility notice:** the configured label `qwen3.5:0.8b` currently
+> resolves to `Qwen/Qwen3-0.6B`. The code does **not** load Unsloth's Qwen3.5
+> 0.8B weights under that label. This fallback was selected because the
+> installed Transformers stack in this environment did not recognize the
+> Qwen3.5 architecture. The backend model is therefore Qwen3 0.6B, not Qwen3.5
+> 0.8B. Do not interpret the label or output-folder names as proof that the
+> Qwen3.5 checkpoint was trained.
 
-This project prepares educational content, converts it into a chat-style instruction dataset, tokenizes it, and then fine-tunes Qwen3 0.6B with PEFT-based adapters. The workflow is split into stages so each part can be rerun independently and validated before the full training run.
+## What the project does
 
-## Current model
+The pipeline has four data-preparation stages followed by CPU fine-tuning:
 
-The project is configured to use:
+1. Extract text from PDFs into page-level JSON.
+2. Clean extracted text and normalize paragraphs.
+3. Turn paragraphs into user/assistant chat examples in JSONL.
+4. Apply the selected model tokenizer's chat template and save token IDs.
+5. Fine-tune the base model with a PEFT LoRA adapter, save the adapter, and
+   merge it with the base model.
 
-```text
-unsloth/Qwen3-0.6B
-```
+All commands below are intended to run from the repository root.
 
-This is the Hugging Face model ID for the Qwen3 0.6B model. The shared setting lives in [training_common.py](training_common.py), and both tokenization and training use it.
+## Project layout
 
-## Project structure
+| Path | Purpose |
+| --- | --- |
+| `Extract_Pdf.py` | Reads `data/pdfs/*.pdf`; writes page-level JSON under `data/raw/`. |
+| `Clean_Text.py` | Normalizes the extracted JSON; writes cleaned documents under `data/clean/`. |
+| `Training_Dataset.py` | Builds `data/processed/training.jsonl` from cleaned page text. |
+| `Tokenize.py` | Applies the configured model tokenizer and writes `data/tokenized/`. |
+| `fine_tuneing.py` | Validates the tokenized data, trains the CPU LoRA adapter, and saves adapter and merged outputs under `models/`. |
+| `test.py` | Checks the Python/dependency setup and validates the generated dataset and token IDs. |
+| `requirements.txt` | Python dependencies and compatible PyTorch/torchvision pins. |
+| `data/pdfs/` | PDF inputs. These are source data, not disposable build output. |
+| `data/raw/`, `data/clean/`, `data/processed/` | Regenerable intermediate datasets. |
+| `data/tokenized/` | Regenerable Hugging Face dataset cache; excluded from Git. |
+| `models/` | Generated training outputs; excluded from Git. |
 
-- `Clean_Text.py` — cleans raw extracted text from JSON documents.
-- `Extract_Pdf.py` — extracts text from PDF files into JSON pages.
-- `Training_Dataset.py` — converts cleaned JSON pages into a chat-style training dataset in JSONL format.
-- `Tokenize.py` — loads the JSONL training set and tokenizes it for model training.
-- `fine_tuneing.py` — CPU-only LoRA fallback and optional merge of the adapter back into the base model.
-- `fine_tuneing_qlora.py` — recommended CUDA-only 4-bit QLoRA training path using Unsloth.
-- `training_common.py` — shared model, dataset, adapter, and training configuration.
-- `test.py` — smoke test for checking the environment, dependencies, config, and dataset shape.
-- `data/` — raw, cleaned, processed, and tokenized datasets.
-- `models/` — generated adapter and merged model outputs.
+## Requirements
 
-## Typical workflow
+- Linux (the project is configured and documented for CPU-only Linux use).
+- Python 3.12 is the target environment; Python 3.12.15 was used for the
+  development and training-step checks.
+- Enough system memory for the float32 base model, LoRA optimizer state, and
+  training activations. CPU training can be terminated by Linux when memory is
+  exhausted; gradient checkpointing and the short sequence limit reduce but do
+  not eliminate that risk.
+- Internet access on first model/tokenizer load, unless the Hugging Face files
+  are already cached locally.
 
-1. Place source PDFs in `data/pdfs/`.
-2. Run `Extract_Pdf.py` to extract raw text.
-3. Run `Clean_Text.py` to normalize the extracted content.
-4. Run `Training_Dataset.py` to build the chat-style instruction dataset.
-5. Run `Tokenize.py` to prepare the dataset for model training.
-6. Run `test.py` to validate the environment and config before training.
-7. Use `fine_tuneing_qlora.py` for Unsloth QLoRA on a supported CUDA GPU, or `fine_tuneing.py` for CPU LoRA.
+No CUDA, GPU, or running Ollama service is used by the training script. The
+`qwen3.5:0.8b` string is only a project alias; it is not an Ollama invocation.
 
-## Setup
+## Installation
 
-Requirements: Python 3.10 through 3.13 and pip. Python 3.14 is not currently supported by the dependency range used here. A CUDA-enabled NVIDIA GPU is required for Unsloth QLoRA; the CPU LoRA fallback does not require CUDA. The first run downloads the model from Hugging Face, so internet access is needed.
-
-For Unsloth QLoRA, install a CUDA-enabled PyTorch build that matches your system first. From the project directory, create and activate a virtual environment, then install the project dependencies:
+From the repository root:
 
 ```bash
-cd /path/to/Fine_Tuining
-python3.13 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-## Validate the project
-
-Before starting training, run the smoke test:
+For later terminals, activate the environment again:
 
 ```bash
-python test.py
+source .venv/bin/activate
 ```
 
-You can skip the dataset validation if the training JSONL has not been generated yet:
+The dependency file pins the PyTorch and torchvision versions together to avoid
+the import-time operator mismatch encountered with incompatible installations.
+If you already have a different environment, install into the project virtual
+environment rather than mixing system packages with the project dependencies.
 
-```bash
-python test.py --skip-data
-```
+## Prepare data
 
-## Prepare data and train
-
-Create the PDF input directory and place your source PDFs there:
-
-```bash
-mkdir -p data/pdfs
-```
-
-Run the pipeline from the project root:
+Place PDF inputs in `data/pdfs/`. Then run the pipeline in order:
 
 ```bash
 python Extract_Pdf.py
 python Clean_Text.py
 python Training_Dataset.py
 python Tokenize.py
+```
+
+The stages report an error if their required input directory has no files.
+`Training_Dataset.py` skips paragraphs shorter than 20 words and reports an
+error if it produces no examples.
+
+Each JSONL record has this shape:
+
+```json
+{
+  "messages": [
+    {"role": "user", "content": "Explain the following educational content clearly.\n\n..."},
+    {"role": "assistant", "content": "..."}
+  ],
+  "metadata": {"source": "book.pdf", "page": 1}
+}
+```
+
+The tokenizer uses the configured model's chat template and truncates each
+example to 128 tokens. `Tokenize.py` stages the replacement dataset before
+swapping it into `data/tokenized/`, so a failed rebuild leaves the previous
+cache available.
+
+## Validate the data and environment
+
+After preparing data, run:
+
+```bash
 python test.py
 ```
 
-Choose one training path:
+The full check verifies the supported Python version, required imports, model
+alias resolution, JSONL structure, tokenized dataset shape, token ID range, and
+the training sequence limit. It loads the tokenizer, so the first run may need
+network access.
+
+To validate the environment and model alias before preparing data:
 
 ```bash
-# Recommended: CUDA GPU QLoRA with Unsloth (requires the GPU setup above)
-python fine_tuneing_qlora.py
+python test.py --skip-data
+```
 
-# Optional: CPU LoRA fallback
+The normal check also prevents the earlier embedding-index failure: it checks
+that every cached token ID fits the tokenizer and rejects stale or incompatible
+tokenized data.
+
+## Train
+
+Start training from the repository root:
+
+```bash
 python fine_tuneing.py
 ```
 
-After changing the model, replace any existing generated `data/tokenized/` dataset by rerunning `Tokenize.py` with the Qwen3 tokenizer. If you open a new terminal later, reactivate the environment with `source .venv/bin/activate` before running commands. On Windows, use `.venv\Scripts\activate` instead.
+The training configuration is deliberately CPU-only:
 
-## Hardware notes
+- Loads the base model in float32 and explicitly places it on the CPU.
+- Uses LoRA with rank 16, alpha 32, dropout 0.05, and attention/MLP projection
+  modules as targets.
+- Trains for one epoch with batch size 1 and gradient accumulation of 8.
+- Uses a 128-token maximum sequence length and non-reentrant gradient
+  checkpointing to reduce activation memory.
+- Disables fp16/bf16 and pinned-memory data loading.
+- Aligns the model and generation configuration's BOS/EOS/PAD IDs to the
+  tokenizer before training.
 
-The recommended GPU path uses Unsloth with 4-bit QLoRA and requires a CUDA-enabled PyTorch installation plus working CUDA support in `bitsandbytes`. The optional CPU path loads the base model in float32 and trains an unquantized LoRA adapter; it is slower and needs enough memory for the model and activations. Both use a 512-token sequence cap.
+CPU fine-tuning is slow. If the operating system prints `Killed`, it terminated
+the process, usually because memory was exhausted. The code already applies
+gradient checkpointing and a short sequence limit; close other memory-heavy
+applications before trying again. Do not increase the sequence length or batch
+size on a memory-constrained machine.
 
-## Important notes
+## Outputs and cleanup
 
-- The Ollama tag `qwen3:0.6b` corresponds to the Hugging Face model ID `unsloth/Qwen3-0.6B` used here.
-- Do not pass a `Path` object to `datasets.load_dataset(..., data_files=...)`; use a string path.
-- `requirements.txt` requires TRL 0.15.2 or newer for the `processing_class` trainer API.
-- `bitsandbytes` and Unsloth are used by the GPU QLoRA path; both are included in `requirements.txt`.
-- Training scripts disable tokenizer parallelism and clean up model references after training.
-- The smoke test is meant to catch common setup problems before a time-consuming fine-tuning run begins.
+Successful training writes:
 
-## Outputs
+- `models/qwen3.5-0.8b-lora/` — PEFT LoRA adapter plus tokenizer files.
+- `models/qwen3.5-0.8b-merged/` — merged model plus tokenizer files.
 
-- `data/processed/training.jsonl` — final instruction dataset
-- `data/tokenized/` — tokenized training dataset
-- `models/qwen3-0.6b-lora/` — the CPU LoRA adapter
-- `models/qwen3-0.6b-qlora/` — the Unsloth GPU QLoRA adapter
-- `models/qwen3-0.6b-merged/` — merged model output
+The directory names retain the project's configured alias; they do not change
+which base checkpoint was loaded. The actual checkpoint is printed near
+startup.
+
+Generated raw/clean/processed/tokenized data and model output directories are
+ignored by Git (except for the source PDFs currently included in the
+repository). The tokenized dataset can be rebuilt by running
+`python Tokenize.py` after `data/processed/training.jsonl` exists. The virtual
+environment can be recreated from `requirements.txt`; neither the environment
+nor generated model outputs should be manually deleted while a run is active.
 
 ## Troubleshooting
 
-- For CPU out-of-memory errors, lower the batch size or sequence length.
-- `fine_tuneing_qlora.py` exits immediately without CUDA; install a CUDA-enabled PyTorch build before running it.
-- If `test.py` fails with missing dependencies, run `python -m pip install -r requirements.txt` inside the active environment.
-- If tokenizer warnings appear at shutdown, the project suppresses parallelism and performs cleanup automatically.
+### `IndexError: index out of range in self`
+
+The tokenized cache was created with token IDs that do not fit the active
+model/tokenizer. Rebuild it and validate:
+
+```bash
+python Tokenize.py
+python test.py
+```
+
+### The training process ends with `Killed`
+
+This is an operating-system process termination rather than a Python exception;
+on a small-memory machine it is commonly an out-of-memory kill. Keep the
+configured batch size and 128-token sequence limit, close other large
+applications, and ensure there is adequate available memory and swap. Swap may
+avoid an immediate kill but can make CPU training substantially slower.
+
+### `qwen3_5` is an unrecognized model type
+
+The current code maps the alias to `Qwen/Qwen3-0.6B` for compatibility; it does
+not load the Unsloth Qwen3.5 0.8B architecture. To train the actual Qwen3.5
+checkpoint, first use a Transformers release that supports its architecture,
+then update the model mapping in both `Tokenize.py` and `fine_tuneing.py` and
+regenerate the tokenized dataset. Do not change only the alias text.
+
+### Missing package/import error
+
+Activate `.venv` and reinstall the declared dependencies:
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+The PyTorch `KernelPreference` / `ScaleCalculationMode` Enum deprecation
+warnings are emitted by the installed PyTorch stack and are not, by themselves,
+training failures.

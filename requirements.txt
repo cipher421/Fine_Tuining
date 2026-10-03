@@ -1,12 +1,9 @@
+# Keep torch and torchvision aligned to avoid Transformers import-time crashes on Linux.
+torch==2.12.1
+torchvision==0.27.1
 transformers>=4.56.1,<5
 datasets>=3.4.1,<4.4
 peft>=0.12,<1
 trl>=0.15.2,<1
 accelerate>=0.30,<2
 pdfplumber>=0.11,<1
-tqdm>=4.66,<5
-pytesseract>=0.3.13,<1
-pillow>=10,<13
-pandas>=2.2,<3
-bitsandbytes>=0.45,<1
-unsloth

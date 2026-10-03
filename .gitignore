@@ -33,6 +33,7 @@ models/
 data/raw/
 data/clean/
 data/processed/
+data/tokenized/
 !data/pdfs/
 .cache/
 ~/.cache/

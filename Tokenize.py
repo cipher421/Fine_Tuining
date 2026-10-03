@@ -1,4 +1,6 @@
 import os
+import shutil
+import tempfile
 from pathlib import Path
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -6,14 +8,24 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
-from training_common import MODEL_NAME
-
 BASE_DIR = Path(__file__).resolve().parent
+MODEL_NAME = "qwen3.5:0.8b"
+MODEL_REPO = "Qwen/Qwen3-0.6B"
 
 INPUT_FILE = BASE_DIR / "data" / "processed" / "training.jsonl"
 OUTPUT_DIR = BASE_DIR / "data" / "tokenized"
+MAX_LENGTH = 128
 
-MAX_LENGTH = 512
+
+def resolve_model_name(model_name: str | None = None) -> str:
+    candidate = (model_name or MODEL_NAME).strip()
+    aliases = {
+        "qwen3.5:0.8b": MODEL_REPO,
+        "qwen3.5:0.8B": MODEL_REPO,
+        "qwen3:0.6b": "Qwen/Qwen3-0.6B",
+        "unsloth/Qwen3.5-0.8B": "Qwen/Qwen3-0.6B",
+    }
+    return aliases.get(candidate, candidate)
 
 
 def main():
@@ -28,11 +40,13 @@ def main():
     print("Loading tokenizer...")
 
     tokenizer = AutoTokenizer.from_pretrained(
-        MODEL_NAME,
+        resolve_model_name(MODEL_NAME),
         use_fast=True,
     )
 
     if tokenizer.pad_token is None:
+        if tokenizer.eos_token is None:
+            raise ValueError("Tokenizer has neither a padding token nor an EOS token.")
         tokenizer.pad_token = tokenizer.eos_token
 
     print("Loading dataset...")
@@ -78,15 +92,30 @@ def main():
     )
 
     output_path = Path(OUTPUT_DIR)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists() and not output_path.is_dir():
+        raise NotADirectoryError(f"Tokenized dataset path is not a directory: {output_path}")
 
-    output_path.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    with tempfile.TemporaryDirectory(
+        prefix=".tokenized-build-",
+        dir=output_path.parent,
+    ) as temporary_directory:
+        temporary_path = Path(temporary_directory)
+        staged_output = temporary_path / "new"
+        backup_output = temporary_path / "previous"
+        tokenized_dataset.save_to_disk(str(staged_output))
 
-    tokenized_dataset.save_to_disk(
-        str(output_path)
-    )
+        if output_path.exists():
+            output_path.replace(backup_output)
+        try:
+            staged_output.replace(output_path)
+        except OSError:
+            if backup_output.exists() and not output_path.exists():
+                backup_output.replace(output_path)
+            raise
+
+        if backup_output.exists():
+            shutil.rmtree(backup_output)
 
     print()
     print("Tokenization complete.")
